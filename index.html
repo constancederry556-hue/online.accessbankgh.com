@@ -1,0 +1,1322 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Bank Ghana </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pbGw6l0XQ1b2+XQeK4eZL6VZ1Y5Q6VYv1Kqv8ZKQv1Kqv8ZKQv1Kqv8ZKQv1Kqv8ZKQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      :root {
+        --access-orange: #ff6a00; /* stronger, more visible orange */
+        --access-orange-200: #ffd7b3; /* softer background variant */
+      }
+
+      .access-lime { color: var(--access-orange); }
+      .bg-access-lime { background-color: var(--access-orange); }
+      .border-access-lime { border-color: var(--access-orange); }
+
+      /* Override Tailwind orange utilities to improve contrast/visibility */
+      .text-orange-500 { color: var(--access-orange) !important; }
+      .bg-orange-500 { background-color: var(--access-orange) !important; }
+      .bg-orange-200 { background-color: var(--access-orange-200) !important; }
+
+      /* Replace usages of the original green (#a2d133) with our orange variable */
+      [class*="#a2d133"] { color: var(--access-orange) !important; }
+      [class*="bg-[#a2d133]"] { background-color: var(--access-orange) !important; }
+      [class*="bg-[#a2d133]/"] { background-color: var(--access-orange) !important; }
+      [class*="border-[#a2d133]"] { border-color: var(--access-orange) !important; }
+      [class*="text-[#a2d133]"] { color: var(--access-orange) !important; }
+      [class*="focus:border-[#a2d133]"] { outline-color: var(--access-orange) !important; }
+
+      /* Ensure SVG icons using stroke/fill inherit the orange */
+      [class*="#a2d133"] svg, [class*="text-[#a2d133]"] svg, [class*="bg-[#a2d133]"] svg {
+        stroke: var(--access-orange) !important;
+        fill: var(--access-orange) !important;
+      }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="module">
+      import React, { useState, useEffect } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { 
+        Home as HomeIcon, 
+        Menu as MenuIcon, 
+        QrCode, 
+        Headphones, 
+        User, 
+        ArrowRightLeft, 
+        Banknote, 
+        Globe, 
+        Smartphone, 
+        Wallet,
+        Settings,
+        Bell,
+        Eye,
+        EyeOff,
+        Search,
+        ChevronRight,
+        ChevronLeft,
+        Trophy,
+        Zap,
+        Briefcase,
+        CreditCard,
+        Clock,
+        Edit2,
+        ChevronDown,
+        Info,
+        Star,
+        Landmark
+      } from 'lucide-react';
+
+      // Firebase (optional) - will be used if you provide a config object in `window.FIREBASE_CONFIG`
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
+      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, updateProfile } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
+      import * as QRCodeLib from 'https://esm.sh/qrcode@1.5.1';
+
+      // --- Types ---
+      const Page = {
+        HOME: 'home',
+        TRANSFERS: 'transfers',
+        INSTANT_TRANSFER: 'instant_transfer',
+        SCAN: 'scan',
+        SUPPORT: 'support',
+        PROFILE: 'profile'
+      };
+
+      // --- Constants ---
+      const COLORS = {
+        primary: '#ff6a00',
+        secondary: '#f3f4f6',
+      };
+
+      const DEFAULT_BENEFICIARIES = [
+        { id: '1', name: 'Richard', avatar: 'https://picsum.photos/seed/rich/100/100', account: '2100123456789', bank: 'Access Bank' },
+        { id: '2', name: 'Matt', avatar: 'https://picsum.photos/seed/matt/100/100', account: '2100987654321', bank: 'ECOBANK' },
+        { id: '3', name: 'Emma', avatar: 'https://picsum.photos/seed/emma/100/100', account: '2100556677889', bank: 'GCB Bank' },
+        { id: '4', name: 'Mom', avatar: 'https://picsum.photos/seed/mom/100/100', account: '2100443322110', bank: 'Access Bank' },
+        { id: '5', name: 'Oluse', avatar: 'https://picsum.photos/seed/oluse/100/100', account: '2100778899001', bank: 'Zenith Bank' },
+      ];
+
+      const ACCOUNTS = [
+        // store the real account number in `number` and a masked display in `masked`
+         { id: '1', type: 'CURRENT ACCOUNT (Access Bank)', number: '2100457845756', masked: '2100xxxxxxx56', balance: 13042600022, pin: '3212', dailyLimit: 500000 },
+         { id: '2', type: 'INSTANT SAVINGS ACC...', number: '2100457845756', masked: '2100xxxxxxx56', balance: 6521300011.00, pin: '3212', dailyLimit: 500000 }
+      ];
+      // --- Components ---
+
+      const Header = ({ currentPage, title, onBack, greeting, userName, onBellClick, notificationOpen, notificationCount }) => {
+        if (currentPage === Page.HOME) {
+          return React.createElement('header', { className: 'relative p-6 bg-white text-[#ff6a00]' },
+            React.createElement('div', { className: 'absolute left-4 top-4' },
+              React.createElement('div', { className: 'text-[#ff6a00] font-bold text-lg' }, 'access bank'),
+              React.createElement('div', { className: 'text-[#ff6a00] text-xs opacity-90 mt-1' }, 'Welcome back, Brannor')
+            ),
+            React.createElement('div', { className: 'flex justify-between items-start mb-6' },
+              React.createElement('div', null,
+                React.createElement('p', { className: 'text-sm font-light text-gray-600' }, greeting || ''),
+                React.createElement('h1', { className: 'text-xl font-bold text-[#ff6a00]' }, '')
+              ),
+              React.createElement('div', { className: 'flex items-center space-x-4' },
+                React.createElement('div', { className: 'flex items-center space-x-1' },
+                  React.createElement('span', { className: 'font-bold text-lg text-[#ff6a00]' }, 'access'),
+                  React.createElement('div', { className: 'w-6 h-6 border-2 border-[#ff6a00] rounded-sm flex items-center justify-center rotate-45' },
+                    React.createElement('div', { className: 'w-3 h-3 bg-[#ff6a00]' })
+                  )
+                ),
+                React.createElement('div', { className: 'relative' },
+                  React.createElement('button', { onClick: onBellClick, className: 'text-[#ff6a00] text-lg relative' }, '🔔'),
+                  notificationCount > 0 && React.createElement('span', { className: 'absolute -top-2 -right-2 text-[10px] font-bold flex items-center justify-center w-5 h-5 rounded-full', style: { backgroundColor: 'var(--access-orange)', color: '#fff' } }, String(notificationCount))
+                )
+              )
+            )
+          );
+        }
+
+        return React.createElement('header', { className: 'relative p-4 bg-[#a2d133] text-white flex items-center justify-between sticky top-0 z-50' },
+          React.createElement('div', { className: 'absolute left-4 top-3' }, React.createElement('span', { className: 'text-white font-bold text-lg' }, 'access bank')),
+          React.createElement('div', { className: 'flex items-center' },
+            onBack && React.createElement('button', { onClick: onBack, className: 'mr-4' }, React.createElement(ChevronLeft, { size: 28 })),
+            React.createElement('h1', { className: 'text-xl font-semibold ml-12' }, title)
+          ),
+          React.createElement('div', { className: 'relative' },
+            React.createElement('button', { onClick: onBellClick, className: 'text-white text-lg relative' }, '🔔'),
+            notificationCount > 0 && React.createElement('span', { className: 'absolute -top-2 -right-2 text-[10px] font-bold flex items-center justify-center w-5 h-5 rounded-full', style: { backgroundColor: 'var(--access-orange)', color: '#fff' } }, String(notificationCount))
+          )
+        );
+      };
+
+      const BottomNav = ({ activeTab, onTabChange, hidden }) => {
+        if (hidden) return null;
+        const items = [
+          { id: 'home', label: 'Home', icon: HomeIcon },
+          { id: 'menu', label: 'Menu', icon: MenuIcon },
+          { id: 'scan', label: 'Scan', icon: QrCode },
+          { id: 'support', label: 'Support', icon: Headphones },
+          { id: 'profile', label: 'Profile', icon: User },
+        ];
+
+        return React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-between px-4 py-2 pb-6 z-50' },
+          items.map((item) => (
+            React.createElement('button', {
+              key: item.id,
+              onClick: () => onTabChange(item.id),
+              className: `flex flex-col items-center space-y-1 transition-colors ${activeTab === item.id ? 'text-[#ff6a00]' : 'text-gray-400'}`
+            },
+              React.createElement(item.icon, { size: 24 }),
+              React.createElement('span', { className: 'text-[10px] font-medium' }, item.label)
+            )
+          ))
+        );
+      };
+
+      /* Scan page: attempts to access camera and shows a simple scanner UI (mock) */
+      const ScanPage = ({ onBack }) => {
+        const videoRef = React.useRef(null);
+        const [streaming, setStreaming] = useState(false);
+        const [scanned, setScanned] = useState(null);
+
+        useEffect(() => {
+          let stream;
+          const start = async () => {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+                setStreaming(true);
+              }
+            } catch (e) {
+              setStreaming(false);
+            }
+          };
+          start();
+
+          return () => {
+            if (stream) {
+              stream.getTracks().forEach(t => t.stop());
+            }
+          };
+        }, []);
+
+        const mockScan = () => {
+          setScanned('QR:accessbank://pay?ref=12345');
+        };
+
+        const qrValue = 'accessbank://pay?ref=12345';
+        const [qrSrc, setQrSrc] = useState(null);
+        useEffect(() => {
+          (async () => {
+            try {
+              if (typeof QRCodeLib !== 'undefined' && QRCodeLib.toDataURL) {
+                QRCodeLib.toDataURL(qrValue, { width: 220, margin: 1, color: { dark: '#111', light: '#fff' } }, (err, url) => {
+                  if (!err) setQrSrc(url);
+                });
+              } else if (window.QRCode && window.QRCode.toDataURL) {
+                window.QRCode.toDataURL(qrValue, { width: 220 }, (err, url) => { if (!err) setQrSrc(url); });
+              }
+            } catch (e) {
+              // ignore
+            }
+          })();
+        }, []);
+
+        return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-6' },
+          React.createElement('div', { className: 'flex items-center mb-4' },
+            React.createElement('button', { onClick: onBack, className: 'mr-4' }, React.createElement(ChevronLeft, { size: 28 })),
+            React.createElement('h2', { className: 'text-lg font-bold' }, 'Scan')
+          ),
+          React.createElement('div', { className: 'bg-white rounded-lg overflow-hidden shadow-md p-4' },
+            React.createElement('div', { className: 'w-full h-64 bg-black flex items-center justify-center mb-4' },
+              streaming ? React.createElement('video', { ref: videoRef, className: 'w-full h-full object-cover' }) : React.createElement('div', { className: 'w-48 h-48 flex items-center justify-center' },
+                (qrSrc ? React.createElement('img', { src: qrSrc, alt: 'QR code', className: 'w-44 h-44 object-contain bg-white p-2 rounded' }) : React.createElement('div', { className: 'text-white' }, 'Generating QR...'))
+              )
+            ),
+            React.createElement('div', { className: 'flex justify-between' },
+              React.createElement('button', { onClick: mockScan, className: 'px-4 py-2 bg-[#ff6a00] text-white rounded-md' }, 'Mock Scan'),
+              React.createElement('button', { onClick: () => { setScanned(null); }, className: 'px-4 py-2 border rounded-md' }, 'Reset')
+            ),
+            scanned && React.createElement('pre', { className: 'mt-4 p-2 bg-gray-100 rounded' }, scanned)
+          )
+        );
+      };
+
+      const SupportPage = ({ onBack }) => {
+        return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-6' },
+          React.createElement('div', { className: 'flex items-center mb-4' },
+            React.createElement('button', { onClick: onBack, className: 'mr-4' }, React.createElement(ChevronLeft, { size: 28 })),
+            React.createElement('h2', { className: 'text-lg font-bold' }, 'Support')
+          ),
+          React.createElement('div', { className: 'bg-white rounded-lg p-6 shadow-sm space-y-4' },
+            React.createElement('h3', { className: 'font-bold' }, 'Contact Support'),
+            React.createElement('p', null, 'Phone: +233 (0) 302 742 699'),
+            React.createElement('p', null, 'Email: support@accessbank.com'),
+            React.createElement('div', { className: 'flex space-x-2' },
+              React.createElement('button', { className: 'px-4 py-2 bg-[#ff6a00] text-white rounded-md' }, 'Call Support'),
+              React.createElement('button', { className: 'px-4 py-2 border rounded-md' }, 'Start Chat')
+            ),
+            React.createElement('h4', { className: 'font-semibold' }, 'FAQs'),
+            React.createElement('ul', { className: 'list-disc list-inside text-sm text-gray-700' },
+              React.createElement('li', null, 'How do I reset my PIN?'),
+              React.createElement('li', null, 'How do I enable/disable cards?'),
+              React.createElement('li', null, 'How do I dispute a transaction?')
+            )
+          )
+        );
+      };
+
+      const ProfilePage = ({ onBack, profileImage, setProfileImage, signOut, currentUser, exportUsers, importUsers }) => {
+        const fileInputRef = React.useRef(null);
+        const [isEditing, setIsEditing] = useState(false);
+
+        const onChooseFile = () => {
+          if (fileInputRef.current) fileInputRef.current.click();
+        };
+
+        const onFileChange = (e) => {
+          const f = e.target.files && e.target.files[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const data = ev.target.result;
+            setProfileImage(data);
+          };
+          reader.readAsDataURL(f);
+        };
+
+        const removeProfileImage = () => {
+          // only remove if user explicitly requests
+          setProfileImage(null);
+        };
+
+        return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-6' },
+          React.createElement('div', { className: 'flex items-center mb-4' },
+            React.createElement('button', { onClick: onBack, className: 'mr-4' }, React.createElement(ChevronLeft, { size: 28 })),
+            React.createElement('h2', { className: 'text-lg font-bold' }, 'Profile')
+          ),
+          React.createElement('div', { className: 'bg-white rounded-lg p-6 shadow-sm space-y-4' },
+            React.createElement('div', { className: 'flex items-center space-x-4' },
+              React.createElement('div', { className: 'w-16 h-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center' },
+                profileImage ? React.createElement('img', { src: profileImage, alt: 'profile', className: 'w-full h-full object-cover' }) : React.createElement(User, { size: 28 })
+              ),
+              React.createElement('div', null,
+                React.createElement('h3', { className: 'font-bold' }, (currentUser && currentUser.name) || 'Brannor'),
+                React.createElement('p', { className: 'text-sm text-gray-600' }, (currentUser && currentUser.email) || 'brannor@example.com')
+              )
+            ),
+
+            React.createElement('div', null,
+              React.createElement('button', { onClick: () => setIsEditing(true), className: 'w-full px-4 py-2 bg-[#ff6a00] text-white rounded-md' }, 'Edit Profile')
+            ),
+
+            isEditing && React.createElement('div', { className: 'space-y-2' },
+              React.createElement('input', { ref: fileInputRef, type: 'file', accept: 'image/*', className: 'hidden', onChange: onFileChange }),
+              React.createElement('div', { className: 'flex space-x-2' },
+                React.createElement('button', { onClick: onChooseFile, className: 'px-4 py-2 bg-white border rounded-md' }, profileImage ? 'Change Profile Picture' : 'Add Profile Picture'),
+                React.createElement('button', { onClick: removeProfileImage, className: 'px-4 py-2 border rounded-md' }, 'Remove Profile Picture')
+              ),
+              React.createElement('div', null,
+                React.createElement('button', { onClick: () => setIsEditing(false), className: 'px-4 py-2 bg-[#a2d133] text-white rounded-md' }, 'Done')
+              )
+            ),
+
+            React.createElement('div', null,
+              React.createElement('button', { onClick: () => { if (signOut) signOut(); }, className: 'w-full px-4 py-2 border rounded-md mb-2' }, 'Logout'),
+              React.createElement('div', { className: 'flex space-x-2' },
+                React.createElement('button', { onClick: () => { if (exportUsers) exportUsers(); }, className: 'flex-1 px-3 py-2 bg-gray-100 rounded' }, 'Export accounts'),
+                React.createElement('label', { className: 'flex-1 px-3 py-2 border rounded text-center cursor-pointer bg-white' },
+                  'Import',
+                  React.createElement('input', { type: 'file', accept: 'application/json', className: 'hidden', onChange: (e) => { const f = e.target.files && e.target.files[0]; if (f && importUsers) importUsers(f); } })
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // --- Pages ---
+
+      const AccountsCards = ({ ownerName }) => {
+        const cards = ACCOUNTS.slice(0,2);
+        const expiryLabel = '03/07/2034';
+        const [expandedId, setExpandedId] = useState(null);
+        const [visibleMap, setVisibleMap] = useState({});
+
+        const maskNumber = (num) => {
+          if (!num) return '';
+          const s = String(num);
+          const last4 = s.slice(-4);
+          return '**** **** ' + last4;
+        };
+
+        const maskAmount = (amt) => {
+          if (amt == null) return '';
+          return 'GHS ****';
+        };
+
+        const toggleVisible = (id) => {
+          setVisibleMap(prev => ({ ...prev, [id]: !prev[id] }));
+        };
+
+        return React.createElement('div', { className: 'flex flex-col space-y-3 overflow-x-auto pb-4 px-2' },
+          React.createElement('div', { className: 'flex space-x-4 overflow-x-auto pb-4' },
+            cards.map((c, i) => (
+              React.createElement('div', {
+                key: c.id,
+                onClick: () => setExpandedId(expandedId === c.id ? null : c.id),
+                className: 'shrink-0 w-64 p-6 rounded-xl shadow-md text-white cursor-pointer relative',
+                style: { backgroundColor: 'var(--access-orange)' }
+              },
+                React.createElement('button', {
+                  onClick: (e) => { e.stopPropagation(); toggleVisible(c.id); },
+                  className: 'absolute top-4 right-4 p-1 rounded-full bg-white/20'
+                }, visibleMap[c.id] ? React.createElement(Eye, { size: 18, className: 'text-white' }) : React.createElement(EyeOff, { size: 18, className: 'text-white' })),
+
+                // top row: expiry on left, owner name on right
+                React.createElement('div', { className: 'flex justify-between items-start mb-6' },
+                  React.createElement('div', null,
+                    React.createElement('div', { className: 'text-[10px] opacity-80' }, 'Valid Thru'),
+                    React.createElement('div', { className: 'text-sm font-semibold' }, expiryLabel)
+                  ),
+                  React.createElement('div', { className: 'text-right' },
+                    React.createElement('div', { className: 'text-sm font-bold' }, ownerName || 'Brannor')
+                  )
+                ),
+
+                // middle: account number (prominent) aligned left
+                React.createElement('div', { className: 'mb-4' },
+                  React.createElement('h4', { className: 'text-lg font-mono font-bold tracking-widest' }, `${visibleMap[c.id] ? c.number : (c.masked || maskNumber(c.number))}`)
+                ),
+
+                // bottom: balance info on the left
+                React.createElement('div', { className: 'flex justify-between items-end' },
+                  React.createElement('div', null,
+                    React.createElement('div', { className: 'text-[10px] opacity-80 mb-1' }, 'Available Balance'),
+                    React.createElement('div', { className: 'text-sm font-semibold' }, visibleMap[c.id] ? `GHS ${c.balance.toLocaleString()}` : maskAmount(c.balance))
+                  )
+                )
+              )
+            ))
+          ),
+          /* Expanded details */
+          expandedId && React.createElement('div', { className: 'px-2' },
+            React.createElement('div', { className: 'bg-white rounded-lg p-4 shadow-sm border' },
+              React.createElement('h4', { className: 'font-bold mb-2' }, 'Account details'),
+              cards.filter(c => c.id === expandedId).map(c => (
+                React.createElement('div', { key: c.id, className: 'space-y-2' },
+                  React.createElement('div', null, React.createElement('strong', null, 'Account:'), ' ', visibleMap[c.id] ? c.number : (c.masked || maskNumber(c.number))),
+                  React.createElement('div', null, React.createElement('strong', null, 'Balance:'), ' ', visibleMap[c.id] ? `GHS ${c.balance.toLocaleString()}` : maskAmount(c.balance)),
+                  React.createElement('div', null, React.createElement('strong', null, 'Card PIN:'), ' ', visibleMap[c.id] ? c.pin : '••••'),
+                  React.createElement('div', null, React.createElement('strong', null, 'Daily limit:'), ' ', visibleMap[c.id] ? `GHS ${c.dailyLimit.toLocaleString()}` : 'GHS ****')
+                )
+              ))
+            )
+          )
+        );
+      };
+
+      const DiscoverCard = ({ balance }) => {
+        const [showDetails, setShowDetails] = useState(false);
+        const bills = [
+          { id: 'b1', name: 'Water Bill' },
+          { id: 'b2', name: 'ECG' }
+        ];
+
+        return React.createElement('div', { className: 'bg-gradient-to-r from-[#ff6a00] to-[#ff9b4d] text-white p-6 rounded-2xl shadow-md' },
+          React.createElement('div', null, React.createElement('h2', { className: 'text-sm opacity-90' }, 'Discover')),
+          React.createElement('div', null, React.createElement('p', { className: 'text-3xl font-bold mt-2' }, `GHS ${Number(balance).toLocaleString()}`)),
+          React.createElement('div', { className: 'mt-3 flex space-x-3' },
+            React.createElement('div', { className: 'flex-1 bg-white/10 p-3 rounded-lg' },
+              React.createElement('p', { className: 'text-xs opacity-80' }, 'Available Balance'),
+              React.createElement('p', { className: 'font-semibold mt-1' }, `GHS ${Number(balance).toLocaleString()}`)
+            ),
+            React.createElement('div', { className: 'flex-1 bg-white/10 p-3 rounded-lg' },
+              React.createElement('p', { className: 'text-xs opacity-80' }, 'Available Balance'),
+              React.createElement('p', { className: 'font-semibold mt-1' }, `GHS ${Number(balance).toLocaleString()}`)
+            )
+          ),
+          React.createElement('div', { className: 'mt-4 flex items-center justify-between' },
+            React.createElement('button', { onClick: () => setShowDetails(s => !s), className: 'bg-white text-orange-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100' }, showDetails ? 'Hide Details' : 'View Details'),
+            React.createElement('button', { className: 'text-sm opacity-90' }, 'More')
+          ),
+          showDetails && React.createElement('div', { className: 'mt-4 bg-white text-gray-800 rounded-lg p-4' },
+            React.createElement('h4', { className: 'font-semibold mb-2' }, 'Recent Bills Paid'),
+            bills.map(b => (
+              React.createElement('div', { key: b.id, className: 'py-2 border-b last:border-none' },
+                React.createElement('div', { className: 'font-medium' }, b.name)
+              )
+            ))
+          )
+        );
+      };
+
+      const HomePage = ({ onNavigate, beneficiaries, ownerName }) => {
+        const favorites = [
+          { label: 'Discover', icon: CreditCard, emoji: '✨', details: [], route: null },
+          { label: 'Rewards & Referral', icon: Trophy, fa: 'fa-solid fa-trophy', emoji: '🎉', details: [
+            'Refer friends and earn bonuses',
+            'Check reward points',
+            'See promo offers',
+            'Redeem earned rewards (if available)'
+          ] },
+          { label: 'BreezePay', icon: Smartphone, fa: 'fa-solid fa-gem', isNew: true, emoji: '💳', details: [
+            'This is a Buy Now, Pay Later feature.',
+            'Shop from partnered merchants',
+            'Pay in installments',
+            'View repayment schedule',
+            'Track outstanding balance'
+          ] },
+          { label: 'Access Transfers', icon: ArrowRightLeft, fa: 'fa-solid fa-arrow-right-arrow-left', emoji: '🔁', details: [
+            'Used to send money to another Access Bank account.',
+            'Enter account number',
+            'Save beneficiaries',
+            'Transfer instantly',
+            'View transfer receipt'
+          ], route: Page.TRANSFERS },
+          { label: 'Other Banks Transfers', icon: Banknote, fa: 'fa-solid fa-exchange-alt', emoji: '🏦', details: [
+            'Used to send money to accounts in other Ghana banks.',
+            'Choose bank',
+            'Enter account details',
+            'Save beneficiary',
+            'Pay transfer charges (if applicable)',
+            'Get transaction receipt'
+          ] },
+          { label: 'Airtime & Data Top-up', icon: Smartphone, fa: 'fa-solid fa-mobile-screen-button', emoji: '📶', details: [
+            'Buy airtime for yourself',
+            'Buy airtime for others',
+            'Buy mobile data bundles',
+            'Save phone numbers'
+          ] },
+          { label: 'Sport Wallet Funding', icon: Zap, fa: 'fa-solid fa-futbol', emoji: '⚽', details: [
+            'Fund betting accounts (e.g., Bet9ja, SportyBet, etc.)',
+            'Enter betting ID',
+            'Confirm instant funding'
+          ] },
+          { label: 'Bills Payment', icon: Briefcase, fa: 'fa-solid fa-file-invoice-dollar', emoji: '🧾', details: [
+            'Pay electricity bills',
+            'Pay DSTV/GOtv subscription',
+            'Pay internet bills',
+            'Pay school fees (where available)',
+            'Save biller details'
+          ] },
+          { label: 'International Airtime', icon: Globe, fa: 'fa-solid fa-globe', emoji: '🌍', details: [
+            'Send airtime to international numbers',
+            'Choose country',
+            'Pay in Ghc'
+          ] },
+          { label: 'Loans', icon: Smartphone, fa: 'fa-solid fa-hand-holding-dollar', emoji: '💰', details: [
+            'Apply for quick loans',
+            'Check loan eligibility',
+            'View repayment schedule',
+            'Repay loan'
+          ] },
+          { label: 'Wealth and Investment', icon: Briefcase, fa: 'fa-solid fa-chart-line', isNew: true, emoji: '📈', details: [
+            'Open savings plans',
+            'Fixed deposits',
+            'Invest in products offered by the bank',
+            'Track investment growth'
+          ] },
+          { label: 'eVoucher (Gift Cards)', icon: CreditCard, fa: 'fa-solid fa-tag', isNew: true, emoji: '🎁', details: [
+            'Buy gift cards',
+            'Send gift cards',
+            'Redeem vouchers'
+          ] },
+          { label: 'Transaction History', icon: Clock, fa: 'fa-solid fa-clock-rotate-left', emoji: '📜', details: [
+            'All deposits',
+            'All withdrawals',
+            'ATM transactions',
+            'Transfers',
+            'Bills paid',
+            'Loan deductions',
+            'Account balance after each transaction'
+          ] },
+        ];
+
+        const colors = ['#ff6a00', '#6c5ce7', '#00b894', '#fdcb6e', '#0984e3', '#e17055'];
+
+        const [selected, setSelected] = useState(null);
+        const [actionMessage, setActionMessage] = useState(null);
+
+        const handleAction = (label) => {
+          setActionMessage(`${label} — action executed`);
+          setTimeout(() => setActionMessage(null), 2200);
+        };
+
+        if (selected) {
+          // Special case: Discover opens the DiscoverCard showing account balance
+          if (selected.label === 'Discover') {
+              return React.createElement('div', { className: 'pb-24 bg-white relative' },
+                React.createElement('button', { onClick: () => setSelected(null), className: 'absolute left-4 top-4 bg-white/90 text-orange-500 rounded-full p-1 shadow z-50' }, React.createElement(ChevronLeft, { size: 18 })),
+                React.createElement('div', { className: 'bg-[#a2d133] px-6 pb-8 pt-2' },
+                  React.createElement('div', { className: 'flex items-center space-x-4 mb-4' },
+                    React.createElement('button', { onClick: () => setSelected(null), className: 'text-white' }, React.createElement(ChevronLeft, { size: 24 })),
+                    React.createElement('h2', { className: 'text-white font-semibold text-lg' }, selected.label)
+                  )
+                ),
+                React.createElement('div', { className: 'p-6' },
+                  actionMessage && React.createElement('div', { className: 'mb-3 text-sm text-green-700 font-medium' }, actionMessage),
+                  React.createElement(DiscoverCard, { balance: ACCOUNTS[0].balance })
+                )
+              );
+            }
+
+          return React.createElement('div', { className: 'pb-24 bg-white relative' },
+            React.createElement('button', { onClick: () => setSelected(null), className: 'absolute left-4 top-4 bg-white/90 text-orange-500 rounded-full p-1 shadow z-50' }, React.createElement(ChevronLeft, { size: 18 })),
+            React.createElement('div', { className: 'bg-[#a2d133] px-6 pb-8 pt-2' },
+              React.createElement('div', { className: 'flex items-center space-x-4 mb-4' },
+                React.createElement('button', { onClick: () => setSelected(null), className: 'text-white' }, React.createElement(ChevronLeft, { size: 24 })),
+                React.createElement('h2', { className: 'text-white font-semibold text-lg' }, selected.label)
+              )
+            ),
+            React.createElement('div', { className: 'p-6' },
+              actionMessage && React.createElement('div', { className: 'mb-3 text-sm text-green-700 font-medium' }, actionMessage),
+              React.createElement('h3', { className: 'text-lg font-bold mb-2' }, selected.label),
+              React.createElement('div', { className: 'space-y-2' },
+                selected.details.map((d, i) => (
+                  React.createElement('button', { key: i, onClick: () => handleAction(d), className: 'w-full text-left px-4 py-3 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200 transition' }, d)
+                ))
+              ),
+              selected.route && React.createElement('div', { className: 'mt-6' },
+                React.createElement('button', { onClick: () => onNavigate(selected.route), className: 'px-4 py-2 bg-[#ff6a00] text-white rounded-md' }, 'Open')
+              )
+            )
+          );
+        }
+
+        return React.createElement('div', { className: 'pb-24 bg-white' },
+          React.createElement('div', { className: 'bg-[#a2d133] px-6 pb-8 pt-2' },
+            React.createElement('div', { className: 'flex justify-between items-center mb-4' },
+              React.createElement('h2', { className: 'text-white font-semibold text-lg' }, 'My favorites'),
+              React.createElement('button', { className: 'flex items-center text-white text-sm' },
+                React.createElement(Edit2, { size: 16, className: 'mr-1' }), ' Edit'
+              )
+            ),
+            React.createElement('div', { className: 'grid grid-cols-3 gap-1' },
+              favorites.map((item, idx) => (
+                React.createElement('button', {
+                  key: idx,
+                  onClick: () => setSelected(item),
+                  className: 'relative flex flex-col items-center justify-center aspect-square rounded-md p-2 text-center transition-transform active:scale-95 cursor-pointer bg-white/10 border border-white/5'
+                },
+                  item.isNew && React.createElement('span', { className: 'absolute top-1 right-1 bg-white text-orange-500 text-[8px] px-1 rounded uppercase font-bold' }, 'New'),
+                  React.createElement('div', { className: 'mb-2 w-10 h-10 rounded-full flex items-center justify-center transition-all', style: { backgroundColor: colors[idx % colors.length] } },
+                    item.emoji ? React.createElement('span', { className: 'text-white text-base' }, item.emoji) : (item.fa ? React.createElement('i', { className: item.fa + ' text-white text-base' }) : React.createElement(item.icon, { size: 18, className: 'text-white' }))
+                  ),
+                  React.createElement('span', { className: 'text-white text-[10px] leading-tight font-medium' }, item.label)
+                )
+              ))
+            ),
+          ),
+          /* Two orange account cards */
+          React.createElement('div', { className: 'px-6 pt-4' },
+            React.createElement(AccountsCards, { ownerName })
+          ),
+
+          React.createElement('div', { className: 'px-6 py-8' },
+            React.createElement('h3', { className: 'text-lg font-bold mb-4' }, '1-Tap Payment'),
+            React.createElement('div', { className: 'border border-gray-100 rounded-xl p-6 flex items-center bg-white shadow-sm' },
+              React.createElement('div', { className: 'w-10 h-10 rounded-full bg-[#a2d133]/10 flex items-center justify-center text-[#a2d133] mr-4 shrink-0' }, React.createElement(Info, { size: 24 })),
+              React.createElement('p', { className: 'text-gray-500 text-sm' }, 'You do not have any 1-Tap Payments set-up')
+            ),
+            React.createElement('div', { className: 'mt-10' },
+              React.createElement('div', { className: 'flex justify-between items-center mb-4' },
+                React.createElement('h3', { className: 'text-lg font-bold' }, 'Featured'),
+                React.createElement('button', { className: 'text-[#a2d133] font-bold text-sm' }, 'More')
+              ),
+              React.createElement('div', { className: 'rounded-xl overflow-hidden shadow-lg' },
+                React.createElement('img', { src: 'https://picsum.photos/seed/promo/600/300', alt: 'Promo', className: 'w-full h-auto object-cover' }),
+                React.createElement('div', { className: 'p-4 bg-white' },
+                  React.createElement('h4', { className: 'font-bold text-[#a2d133]' }, 'Own your virtual card'),
+                  React.createElement('p', { className: 'text-xs text-gray-500' }, 'in seconds')
+                )
+              )
+            )
+          )
+        );
+      };
+
+      const TransfersPage = ({ onNavigate, beneficiaries, transactions }) => {
+        const options = [
+          { label: 'To Own Account', icon: ArrowRightLeft, id: 'own' },
+          { label: 'Access Bank', icon: null, id: 'access', custom: 'A' },
+          { label: 'To Other Banks', icon: Landmark, id: 'other' },
+          { label: 'International Funds Transfer', icon: Globe, id: 'intl' },
+          { label: 'Access Africa', icon: null, id: 'africa', custom: 'Africa' },
+          { label: 'Mobile Money', icon: Wallet, id: 'momo' },
+        ];
+        
+
+        return React.createElement('div', { className: 'min-h-screen bg-gray-50 pb-10' },
+          React.createElement('div', { className: 'bg-[#a2d133] pt-4 pb-16 px-6 text-center relative' },
+            React.createElement('h2', { className: 'text-3xl font-bold mb-1 text-white' }, 'Make transfers'),
+            React.createElement('p', { className: 'text-xl font-light text-white' }, 'easy and efficient')
+          ),
+          React.createElement('div', { className: 'px-4 -mt-10 relative z-10' },
+            React.createElement('div', { className: 'bg-white rounded-t-3xl p-6 shadow-sm border-b border-gray-100' },
+              React.createElement('h3', { className: 'text-gray-800 font-bold text-sm tracking-wider mb-6 uppercase' }, 'Frequent Transfers'),
+              React.createElement('div', { className: 'flex space-x-6 overflow-x-auto no-scrollbar pb-2' },
+                (beneficiaries || []).map((b) => (
+                  React.createElement('button', { key: b.id, onClick: () => onNavigate(Page.INSTANT_TRANSFER, 'access', { accNumber: b.account, bank: b.bank, beneficiaryName: b.name }), className: 'flex flex-col items-center space-y-2 shrink-0' },
+                    React.createElement('div', { className: 'w-16 h-16 rounded-full overflow-hidden border-2 border-gray-100' },
+                      React.createElement('img', { src: b.avatar, alt: b.name, className: 'w-full h-full object-cover' })
+                    ),
+                    React.createElement('span', { className: 'text-xs font-medium text-gray-700' }, b.name)
+                  )
+                ))
+              )
+            ),
+            React.createElement('div', { className: 'bg-white p-2 space-y-2' },
+              options.map((opt) => (
+                React.createElement('button', {
+                  key: opt.id,
+                  onClick: () => onNavigate(Page.INSTANT_TRANSFER, opt.id),
+                  className: 'w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors border-b border-gray-50'
+                },
+                  React.createElement('div', { className: 'flex items-center space-x-4' },
+                    opt.icon ? React.createElement(opt.icon, { className: 'text-orange-500', size: 24 }) : 
+                    opt.custom === 'A' ? React.createElement('span', { className: 'font-bold text-orange-500 text-xl' }, 'A') :
+                    React.createElement('div', { className: 'w-6 h-4 bg-orange-500 rounded-sm' })
+                  ),
+                  React.createElement('span', { className: 'font-semibold text-gray-800' }, opt.label),
+                  React.createElement(ChevronRight, { size: 20, className: 'text-blue-900' })
+                )
+              ))
+            ),
+            // Recent transactions list
+            React.createElement('div', { className: 'bg-white p-4 mt-4 rounded-lg' },
+              React.createElement('h3', { className: 'text-sm font-semibold mb-3' }, 'Recent Transactions'),
+              React.createElement('div', { className: 'space-y-3' },
+                React.createElement('div', { className: 'flex items-center justify-between p-3 border rounded' },
+                  React.createElement('div', { className: 'text-black' },
+                    React.createElement('div', { className: 'text-sm font-medium text-black' }, 'Momo Transfer'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Amount: C10000'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Recipient: 0203269885 (Vodafone Cash)'),
+                    React.createElement('div', { className: 'text-xs text-black' }, '2/4/2026, 2:09:37 PM')
+                  ),
+                  React.createElement('div', { className: 'text-xs text-green-600 font-medium' }, 'Complete')
+                ),
+                React.createElement('div', { className: 'flex items-center justify-between p-3 border rounded' },
+                  React.createElement('div', { className: 'text-black' },
+                    React.createElement('div', { className: 'text-sm font-medium text-black' }, 'Momo Transfer'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Amount: C10000'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Recipient: 0203269885 (Vodafone Cash)'),
+                    React.createElement('div', { className: 'text-xs text-black' }, '2/4/2026, 2:26:37 PM')
+                  ),
+                  React.createElement('div', { className: 'text-xs text-red-600 font-medium' }, 'PENDING')
+                ),
+                React.createElement('div', { className: 'flex items-center justify-between p-3 border rounded' },
+                  React.createElement('div', { className: 'text-black' },
+                    React.createElement('div', { className: 'text-sm font-medium text-black' }, 'Momo Transfer'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Amount: C8500'),
+                    React.createElement('div', { className: 'text-xs text-black' }, 'Recipient: 0541916158 (MTN Momo)'),
+                    React.createElement('div', { className: 'text-xs text-black' }, '2/4/2026, 3:05:43 PM')
+                  ),
+                  React.createElement('div', { className: 'text-xs text-red-600 font-medium' }, 'PENDING')
+                )
+              )
+            )
+          )
+        );
+      };
+
+      const InstantTransferPage = ({ mode, prefill, onBack, onCreateTransaction, onNotifyPending, onSaveBeneficiary }) => {
+        const [selectedIndex, setSelectedIndex] = useState(0);
+        const [bank, setBank] = useState('Access Bank');
+        const [accNumber, setAccNumber] = useState('');
+        const [routingNumber, setRoutingNumber] = useState('');
+        const [amount, setAmount] = useState('');
+        const [provider, setProvider] = useState('MTN');
+        const [message, setMessage] = useState(null);
+        const [editingLimit, setEditingLimit] = useState(false);
+        const [limitValue, setLimitValue] = useState(ACCOUNTS[0].dailyLimit || 0);
+
+        const momoProviders = ['MTN', 'Telecel', 'Vodafone', 'AirtelTigo'];
+        const bankOptions = ['Access Bank', 'ECOBANK', 'GCB Bank', 'Stanbic Bank', 'Fidelity Bank', 'Zenith Bank'];
+
+        useEffect(() => {
+          if (prefill) {
+            if (prefill.bank) setBank(prefill.bank);
+            if (prefill.accNumber || prefill.accNumber === '') setAccNumber(prefill.accNumber || prefill.accNumber === '' ? prefill.accNumber : '');
+            if (prefill.routingNumber) setRoutingNumber(prefill.routingNumber);
+            if (prefill.beneficiaryName) setMessage(`Ready to send to ${prefill.beneficiaryName}`);
+          }
+        }, [prefill]);
+
+        useEffect(() => { setLimitValue(ACCOUNTS[selectedIndex].dailyLimit || 0); }, [selectedIndex]);
+
+        const saveAccounts = () => {
+          try {
+            const snapshot = ACCOUNTS.map(a => ({ id: a.id, dailyLimit: a.dailyLimit }));
+            localStorage.setItem('accountsData', JSON.stringify(snapshot));
+          } catch (e) {}
+        };
+
+        const handleSaveLimit = () => {
+          const n = Number(limitValue) || 0;
+          ACCOUNTS[selectedIndex].dailyLimit = n;
+          saveAccounts();
+          setEditingLimit(false);
+          setMessage('Daily limit updated');
+        };
+
+        const handleSubmit = () => {
+          if (mode === 'momo') {
+            if (!provider) return setMessage('Choose a provider');
+            if (!accNumber) return setMessage('Enter phone number');
+          } else if (mode === 'other') {
+            if (!accNumber) return setMessage('Enter account number');
+            if (!routingNumber) return setMessage('Enter routing number');
+          } else {
+            if (!bank) return setMessage('Choose a bank');
+            if (!accNumber) return setMessage('Enter account number');
+          }
+          if (!amount || isNaN(Number(amount))) return setMessage('Enter a valid amount');
+          const amt = Number(amount);
+          const from = ACCOUNTS[selectedIndex];
+          if (!from) return setMessage('Select a source account');
+          if (from.balance < amt) return setMessage('Insufficient funds');
+
+          // Do NOT complete the transfer — create a pending transaction and notify the user.
+          let toText = '';
+          if (mode === 'momo') toText = provider + ' ' + accNumber;
+          else if (mode === 'other') toText = `Account: ${accNumber} (Routing: ${routingNumber})`;
+          else toText = bank + ' ' + accNumber;
+          const tx = { id: Date.now(), amount: amt, from: from.number, to: toText, status: 'Pending', date: new Date().toLocaleString() };
+          try { if (onCreateTransaction) onCreateTransaction(tx); } catch (e) {}
+          try { if (onNotifyPending) onNotifyPending(tx); } catch (e) {}
+          setMessage('Transaction submitted and is pending');
+          setAmount('');
+          // auto-save beneficiary when available
+          try {
+            if (onSaveBeneficiary && mode !== 'momo') {
+              const name = (prefill && prefill.beneficiaryName) || accNumber.slice(-4);
+              const bobj = { name, account: accNumber, avatar: undefined };
+              if (mode !== 'other') bobj.bank = bank;
+              onSaveBeneficiary(bobj);
+            }
+          } catch (e) {}
+        };
+
+        return React.createElement('div', { className: 'min-h-screen bg-gray-50 pb-20' },
+          React.createElement('div', { className: 'bg-[#a2d133] p-6' },
+            onBack ? React.createElement('button', { onClick: onBack, className: 'mr-4 text-white' }, React.createElement(ChevronLeft, { size: 24 })) : null,
+            React.createElement('p', { className: 'text-white text-xs font-bold uppercase' }, 'Instant Transfer')
+          ),
+          React.createElement('div', { className: 'p-6 space-y-4' },
+            /* Provider / Bank selection. For 'other' mode we hide the bank selector */
+            mode === 'momo' ? React.createElement('div', null,
+              React.createElement('label', { className: 'block text-[10px] font-bold mb-1' }, 'Provider'),
+              React.createElement('select', { value: provider, onChange: (e) => setProvider(e.target.value), className: 'w-full border-b py-2' }, momoProviders.map(p => React.createElement('option', { key: p, value: p }, p)))
+            ) : mode === 'other' ? React.createElement('div', { className: 'py-1' }, React.createElement('h3', { className: 'text-sm font-semibold' }, 'Other Banks Transfer')) : React.createElement('div', null,
+              React.createElement('label', { className: 'block text-[10px] font-bold mb-1' }, 'Bank'),
+              React.createElement('select', { value: bank, onChange: (e) => setBank(e.target.value), className: 'w-full border-b py-2' }, bankOptions.map(b => React.createElement('option', { key: b, value: b }, b)))
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-[10px] font-bold mb-1' }, mode === 'momo' ? 'Phone Number' : 'Account Number'),
+              React.createElement('input', { type: 'text', value: accNumber, onChange: (e) => setAccNumber(e.target.value), className: 'w-full border-b py-2' })
+            ),
+            mode === 'other' && React.createElement('div', null,
+              React.createElement('label', { className: 'block text-[10px] font-bold mb-1' }, 'Routing Number'),
+              React.createElement('input', { type: 'text', value: routingNumber, onChange: (e) => setRoutingNumber(e.target.value), placeholder: 'Bank routing / sort code', className: 'w-full border-b py-2' })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-[10px] font-bold mb-1' }, 'Amount'),
+              React.createElement('input', { type: 'number', value: amount, onChange: (e) => setAmount(e.target.value), className: 'w-full border-b py-2' })
+            ),
+            React.createElement('div', { className: 'flex items-center justify-between' },
+              React.createElement('div', null, React.createElement('p', { className: 'text-xs font-bold' }, 'Daily Transaction Limit'), React.createElement('p', { className: 'text-sm text-gray-600' }, `GHS ${limitValue.toLocaleString()}`))
+            ),
+            React.createElement('button', { onClick: handleSubmit, className: 'w-full bg-white text-orange-500 py-3 rounded-md font-bold border border-orange-500' }, 'Submit Transfer'),
+            message && React.createElement('div', { className: 'text-sm text-green-700 mt-2' }, message)
+          )
+        );
+      };
+
+      // --- Main Application ---
+
+      const AuthScreen = ({ onCreateUser, onSignIn, firebaseReady }) => {
+        const [mode, setMode] = useState('signup');
+        const [name, setName] = useState('');
+        const [email, setEmail] = useState('');
+        const [password, setPassword] = useState('');
+        const [error, setError] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const handleCreate = async () => {
+          setError(null);
+          if (!name) return setError('Enter a name');
+          if (!email) return setError('Enter an email');
+          if (!password) return setError('Enter a password');
+          setLoading(true);
+          try {
+            await onCreateUser({ name, email, password });
+            setError('Account created — please sign in');
+            setMode('signin');
+            setPassword('');
+          } catch (e) {
+            console.error('create user error', e);
+            // show Firebase error message if available to help diagnosis
+            setError(e && e.message ? `Failed: ${e.message}` : 'Failed to create account');
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const handleSignIn = async () => {
+          setError(null);
+          if (!email) return setError('Enter an email');
+          if (!password) return setError('Enter a password');
+          setLoading(true);
+          try {
+            const ok = await onSignIn({ email, password });
+            if (!ok) setError('Invalid credentials');
+          } catch (e) {
+            setError('Sign in failed');
+          } finally {
+            // small delay to let user see a loading state
+            setTimeout(() => setLoading(false), 800);
+          }
+        };
+
+        return React.createElement('div', { className: 'fixed inset-0 z-[60] flex items-start justify-center', style: { overflow: 'hidden' } },
++          firebaseReady !== undefined && React.createElement('div', { className: 'absolute top-2 text-xs text-gray-600' }, firebaseReady ? 'Firebase ready' : 'No Firebase (local only)'),
+          // use an absolutely-positioned <img> so the background can scale fully and remain visible
+          React.createElement('img', { src: 'assets/login-bg.jpg', alt: 'login-bg', className: 'absolute inset-0 w-full h-full object-cover', onError: (e) => { try { e.target.style.display = 'none'; const p = e.target.parentNode; if (p) { p.style.backgroundImage = 'url("assets/login-bg.jpg")'; p.style.backgroundSize = 'cover'; p.style.backgroundPosition = 'center right'; } } catch (err) {} }, style: { zIndex: 0, transform: 'scale(1.12)', filter: 'saturate(1.05) contrast(0.98) brightness(0.96)', objectPosition: 'center right' } }),
+          // decorative SVG emblem (large, semi-transparent) placed above the photo and under the card
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 200 200', className: 'absolute right-0 top-1/2 -translate-y-1/2', style: { width: '62vw', height: '62vh', opacity: 0.18, zIndex: 6, pointerEvents: 'none', transform: 'translateX(6%)' } },
+            React.createElement('defs', null,
+              React.createElement('linearGradient', { id: 'g-right', x1: '0%', y1: '0%', x2: '100%', y2: '100%' },
+                React.createElement('stop', { offset: '0%', stopColor: '#FF8A00' }),
+                React.createElement('stop', { offset: '100%', stopColor: '#FFD166' })
+              )
+            ),
+            React.createElement('g', { transform: 'translate(100 100) rotate(45)' },
+              React.createElement('rect', { x: -70, y: -70, width: 140, height: 140, fill: 'none', stroke: 'url(#g-right)', strokeWidth: 18, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+              React.createElement('rect', { x: -42, y: -42, width: 84, height: 84, fill: 'none', stroke: 'url(#g-right)', strokeWidth: 14, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+              React.createElement('rect', { x: -18, y: -18, width: 36, height: 36, fill: 'none', stroke: 'url(#g-right)', strokeWidth: 10, strokeLinejoin: 'round', strokeLinecap: 'round' })
+            )
+          ),
+          // left-side decorative emblem (smaller, softer)
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 200 200', className: 'absolute left-0 top-1/3 -translate-y-1/3', style: { width: '38vw', height: '38vh', opacity: 0.12, zIndex: 6, pointerEvents: 'none', transform: 'translateX(-6%) rotate(-8deg)' } },
+            React.createElement('defs', null,
+              React.createElement('linearGradient', { id: 'g-left', x1: '0%', y1: '0%', x2: '100%', y2: '0%' },
+                React.createElement('stop', { offset: '0%', stopColor: '#FFB380' }),
+                React.createElement('stop', { offset: '100%', stopColor: '#FFDDAA' })
+              )
+            ),
+            React.createElement('g', { transform: 'translate(100 100) rotate(30)' },
+              React.createElement('rect', { x: -56, y: -56, width: 112, height: 112, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 12, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+              React.createElement('rect', { x: -30, y: -30, width: 60, height: 60, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 9, strokeLinejoin: 'round', strokeLinecap: 'round' })
+            )
+          ),
+          // medium left emblem (closer to the card)
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 200 200', className: 'absolute left-8 top-2/5', style: { width: '24vw', height: '24vh', opacity: 0.14, zIndex: 6, pointerEvents: 'none', transform: 'translateX(-2%) rotate(-4deg)' } },
+            React.createElement('g', { transform: 'translate(100 100) rotate(20)' },
+              React.createElement('rect', { x: -48, y: -48, width: 96, height: 96, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 10, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+              React.createElement('rect', { x: -24, y: -24, width: 48, height: 48, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 8, strokeLinejoin: 'round', strokeLinecap: 'round' })
+            )
+          ),
+          // several small left-side emblems for visual texture
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 100 100', className: 'absolute left-6 top-12', style: { width: '6vw', height: '6vh', opacity: 0.08, zIndex: 6, pointerEvents: 'none', transform: 'rotate(-12deg)' } },
+            React.createElement('g', { transform: 'translate(50 50) rotate(20)' },
+              React.createElement('rect', { x: -20, y: -20, width: 40, height: 40, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 6, strokeLinejoin: 'round' })
+            )
+          ),
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 100 100', className: 'absolute left-4 top-64', style: { width: '5vw', height: '5vh', opacity: 0.06, zIndex: 6, pointerEvents: 'none', transform: 'rotate(6deg)' } },
+            React.createElement('g', { transform: 'translate(50 50) rotate(-10)' },
+              React.createElement('rect', { x: -16, y: -16, width: 32, height: 32, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 5, strokeLinejoin: 'round' })
+            )
+          ),
+          React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 100 100', className: 'absolute left-12 top-72', style: { width: '4.5vw', height: '4.5vh', opacity: 0.05, zIndex: 6, pointerEvents: 'none', transform: 'rotate(-4deg)' } },
+            React.createElement('g', { transform: 'translate(50 50) rotate(8)' },
+              React.createElement('rect', { x: -12, y: -12, width: 24, height: 24, fill: 'none', stroke: 'url(#g-left)', strokeWidth: 4, strokeLinejoin: 'round' })
+            )
+          ),
+          // translucent overlay with backdrop blur for readability and smoother appearance (lighter so image shows)
+          React.createElement('div', { className: 'absolute inset-0', style: { zIndex: 5, backgroundColor: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' } }),
+          React.createElement('div', { className: 'relative w-full max-w-md shadow-xl rounded-lg p-6 mt-12', style: { zIndex: 10, border: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'rgba(255,255,255,0.78)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' } },
+            React.createElement('h2', { className: 'text-xl font-bold mb-4' }, mode === 'signup' ? 'Create account' : 'Sign in'),
+            React.createElement('div', { className: 'space-y-3' },
+              mode === 'signup' && React.createElement('div', null,
+                React.createElement('label', { className: 'block text-sm font-medium' }, 'Full name'),
+                React.createElement('input', { className: 'w-full border px-3 py-2 rounded', value: name, onChange: (e) => setName(e.target.value) })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { className: 'block text-sm font-medium' }, 'Email'),
+                React.createElement('input', { className: 'w-full border px-3 py-2 rounded', value: email, onChange: (e) => setEmail(e.target.value) })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { className: 'block text-sm font-medium' }, 'Password'),
+                React.createElement('input', { type: 'password', className: 'w-full border px-3 py-2 rounded', value: password, onChange: (e) => setPassword(e.target.value) })
+              ),
+              error && React.createElement('div', { className: 'text-sm text-red-600' }, error),
+              React.createElement('div', { className: 'flex space-x-2 mt-2' },
+                mode === 'signup' ? React.createElement('button', { onClick: handleCreate, disabled: loading, className: 'flex-1 px-4 py-2 bg-orange-500 text-white rounded ' + (loading ? 'opacity-60' : '') }, loading ? 'Creating...' : 'Create account') : React.createElement('button', { onClick: handleSignIn, disabled: loading, className: 'flex-1 px-4 py-2 bg-orange-500 text-white rounded ' + (loading ? 'opacity-60' : '') }, loading ? 'Signing in...' : 'Sign in'),
+                React.createElement('button', { onClick: () => setMode(mode === 'signup' ? 'signin' : 'signup'), disabled: loading, className: 'px-4 py-2 border rounded' }, mode === 'signup' ? 'Have an account?' : 'Create account')
+              )
+            )
+          )
+        );
+      };
+
+
+      const App = () => {
+        const [currentPage, setCurrentPage] = useState(Page.HOME);
+        const [activeTab, setActiveTab] = useState('home');
+        const [users, setUsers] = useState(() => { try { const s = localStorage.getItem('users'); return s ? JSON.parse(s) : []; } catch (e) { return []; } });
+        const [currentUser, setCurrentUser] = useState(() => { try { const s = localStorage.getItem('currentUser'); return s ? JSON.parse(s) : null; } catch (e) { return null; } });
+        const [firebaseReady, setFirebaseReady] = useState(false);
+        const [profileImage, setProfileImageState] = useState(null);
+        const [notificationOpen, setNotificationOpen] = useState(false);
+        const [notifications, setNotifications] = useState(() => {
+          try {
+            const saved = localStorage.getItem('notifications');
+            return saved ? JSON.parse(saved) : [
+              { id: 1, title: 'Credit Alert', body: 'Amount: GHS2,608,800,022\nAcct Num: 2100xxxxxxx,56\nDate: 28-01-2026 03:14:46 PM\nNarration: INSTANT TRANSFER IFO, P04000,Deposit\nCurrent bal:GHS2608800022' },
+              { id: 2, title: 'Credit Alert', body: 'Amount: GHS5,217,600,022\nAcct Num: 2100xxxxxxx,56\nDate: 29-01-2026 11:32:12 AM\nNarration: INSTANT TRANSFER IFO, P04000,Deposit\nCurrent bal:GHS5217600022' },
+              { id: 3, title: 'Credit Alert', body: 'Amount: GHS2,608,800,022\nAcct Num: 2100xxxxxxx,56\nDate: 30-01-2026 05:13:45 PM\nNarration: INSTANT TRANSFER IFO, P04004,Deposit\nCurrent bal:GHS7826400022' },
+              { id: 4, title: 'Credit Alert', body: 'Amount: GHS2,608,800,022\nAcct Num: 2100xxxxxxx,56\nDate: 02-02-2026 04:04:52 PM\nNarration: INSTANT TRANSFER IFO, P04006,Deposit\nCurrent bal:GHS10435200022' },
+              { id: 5, title: 'Credit Alert', body: 'Amount: GHS2,608,800,022\nAcct Num: 2100xxxxxxx,56\nDate: 02-03-2026 02:06:21 PM\nNarration: INSTANT TRANSFER IFO, P04006,Deposit\nCurrent bal:GHS13,044,000,022' },
+              { id: 6, title: 'Message', body: 'Dear Gifty, your account has been credited with GHS13,044,000,022. Your new balance is looking very healthy. Thank you for banking with us.' },
+              { id: 7, title: 'Alert', body: '0000011307578189 confirmed. You have received GHS1,400,000 as payment from GOLDBOD 2026-02-04 at 10:12:34. Your new Access Bank balance is GHS13,045,400,044.' },
+              { id: 8, title: 'Info', body: 'We are delighted to inform you that your account has received a significant credit today. Thank you for trusting us with your success.' },
+              { id: 9, title: 'Debit Alert', body: 'Amount: GHS10000.00\nAcct Num: 2100xxxxxxx56\nDate: 04-02-2026 12:04:29\nNarration: Account to Wallet, Gifty\nCurrent bal:GHS13,045,399,021.' },
+              { id: 10, title: 'Debit Alert', body: 'Amount: GHS1\nAcct Num: 2100xxxxxxx56\nDate: 04-02-2026 11:49:29\nNarration: Atta\nCurrent bal:GHS13,045,399,021' },
+              { id: 11, title: 'Transaction', body: 'Amount: 10000.00\nTransaction Date: Feb 4, 2026 at 12:04:03 AM\nTracking ID: 600806987\nGIFTY BRANNOR-ACCESS Smart Banking Ac...\n13,045,399,021 GHS' },
+              { id: 12, title: 'Security', body: 'Dear Customer, a large transaction has been detected on your account. Kindly visit your nearest branch with valid identification to verify the source of funds. Thank you.' },
+              { id: 13, title: 'Debit Alert', body: 'Amount: GHS10000.00\nAcct Num: 2100xxxxxxx56\nDate: 04-02-2026 12:04:29\nNarration: Account to Wallet, Gifty\nCurrent bal:GHS13,045,399,021.' },
+              { id: 14, title: 'POS', body: 'Your account has been debited with GHS1,400,000 for POS purchase. Available balance: GHS13,042,600,022.00' }
+            ];
+          } catch (e) { return []; }
+        });
+        const [notificationCount, setNotificationCount] = useState(() => notifications.length);
+        const [transactions, setTransactions] = useState(() => { try { const s = localStorage.getItem('transactions'); return s ? JSON.parse(s) : []; } catch (e) { return []; } });
+        const [toast, setToast] = useState(null);
+
+        const [beneficiaries, setBeneficiaries] = useState(() => {
+          try { const s = localStorage.getItem('beneficiaries'); return s ? JSON.parse(s) : DEFAULT_BENEFICIARIES; } catch (e) { return DEFAULT_BENEFICIARIES; }
+        });
+
+        useEffect(() => {
+          try {
+            const saved = localStorage.getItem('profileImage');
+            if (saved) setProfileImageState(saved);
+          } catch (err) {}
+        }, []);
+
+        useEffect(() => { setNotificationCount(notifications.length); try { localStorage.setItem('notifications', JSON.stringify(notifications)); } catch(e){} }, [notifications]);
+        useEffect(() => { try { localStorage.setItem('transactions', JSON.stringify(transactions)); } catch (e) {} }, [transactions]);
+
+        const removeNotification = (id) => { try { setNotifications(prev => prev.filter(n => n.id !== id)); } catch (e) {} };
+
+        const addTransaction = (tx) => {
+          setTransactions(prev => { const next = [tx, ...prev]; try { localStorage.setItem('transactions', JSON.stringify(next)); } catch (e) {} return next; });
+        };
+
+        const notifyPending = (userName, tx) => {
+          const id = Date.now() + Math.floor(Math.random() * 1000);
+          const body = `Dear ${userName || 'Customer'},\nWe are sorry to inform you that, this transaction is on pending due to the main web online transfer charges $$...\nDate: ${tx.date}`;
+          const note = { id, title: 'Transfer Pending', body };
+          setNotifications(prev => [note, ...prev]);
+          setToast(note);
+          // remove after 10 seconds
+          setTimeout(() => {
+            removeNotification(id);
+            try { setToast(null); } catch (e) {}
+          }, 10000);
+        };
+        useEffect(() => { try { localStorage.setItem('beneficiaries', JSON.stringify(beneficiaries)); } catch(e){} }, [beneficiaries]);
+
+        const addNotification = (note) => {
+          setNotifications(prev => [note, ...prev]);
+        };
+
+        useEffect(() => { try { localStorage.setItem('users', JSON.stringify(users)); } catch (e) {} }, [users]);
+
+        // Initialize Firebase auth if config is provided on window.FIREBASE_CONFIG
+        useEffect(() => {
+          try {
+            const cfg = window.FIREBASE_CONFIG || {};
+            if (cfg && cfg.apiKey) {
+              const app = initializeApp(cfg);
+              const fbAuth = getAuth(app);
+              onAuthStateChanged(fbAuth, (u) => {
+                if (u) setCurrentUser({ id: u.uid, name: u.displayName || u.email, email: u.email });
+                else setCurrentUser(null);
+              });
+              // keep auth instance globally for other handlers
+              window.__fbAuth = fbAuth;
+              setFirebaseReady(true);
+              console.log('Firebase auth ready');
+            }
+          } catch (e) { console.warn('Firebase init failed or not configured', e); }
+        }, []);
+        useEffect(() => { try { if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser)); else localStorage.removeItem('currentUser'); } catch (e) {} }, [currentUser]);
+
+        const createUser = async ({ name, email, password }) => {
+          // If Firebase is configured, create account there so it works across devices
+          if (window.__fbAuth) {
+            try {
+              const cred = await createUserWithEmailAndPassword(window.__fbAuth, email, password);
+              try { await updateProfile(cred.user, { displayName: name }); } catch (e) {}
+              // sign out to require explicit sign-in (preserve previous UX)
+              try { await firebaseSignOut(window.__fbAuth); } catch (e) {}
+              // optionally keep a local copy as backup
+              const u = { id: cred.user.uid, name, email, password: '***' };
+              setUsers(prev => { const next = [u, ...prev]; try { localStorage.setItem('users', JSON.stringify(next)); } catch (e) {} return next; });
+              return;
+            } catch (err) {
+              console.error('firebase createUser error', err);
+              throw err;
+            }
+          }
+          // fallback: store locally (existing behavior)
+          const u = { id: String(Date.now()), name, email, password };
+          setUsers(prev => { const next = [u, ...prev]; try { localStorage.setItem('users', JSON.stringify(next)); } catch (e) {} return next; });
+        };
+
+        const exportUsers = () => {
+          try {
+            const data = JSON.stringify(users || []);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'users-backup.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          } catch (e) { alert('Export failed'); }
+        };
+
+        const importUsers = (file) => {
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            try {
+              const parsed = JSON.parse(ev.target.result);
+              if (!Array.isArray(parsed)) throw new Error('Invalid file');
+              setUsers(prev => {
+                const byEmail = {};
+                (parsed || []).concat(prev || []).forEach(u => { if (u && u.email) byEmail[u.email] = u; });
+                const next = Object.values(byEmail);
+                try { localStorage.setItem('users', JSON.stringify(next)); } catch(e){}
+                return next;
+              });
+              alert('Users imported');
+            } catch (e) { alert('Import failed: invalid file'); }
+          };
+          reader.readAsText(file);
+        };
+
+        const signIn = async ({ email, password }) => {
+          if (window.__fbAuth) {
+            try {
+              const cred = await signInWithEmailAndPassword(window.__fbAuth, email, password);
+              const u = cred.user;
+              setCurrentUser({ id: u.uid, name: u.displayName || u.email, email: u.email });
+              return true;
+            } catch (err) { return false; }
+          }
+          const found = users.find(u => u.email === email && u.password === password);
+          if (found) { setCurrentUser(found); return true; }
+          return false;
+        };
+
+        const signOut = async () => {
+          if (window.__fbAuth) {
+            try { await firebaseSignOut(window.__fbAuth); } catch (e) {}
+          }
+          setCurrentUser(null);
+        };
+
+        const addBeneficiary = (b) => {
+          setBeneficiaries(prev => {
+            const exists = prev.find(x => x.account === b.account);
+            if (exists) return prev;
+            const next = [{ id: String(Date.now()), avatar: b.avatar || 'https://picsum.photos/seed/new/100/100', name: b.name, account: b.account, bank: b.bank }, ...prev];
+            return next;
+          });
+        };
+
+        const setProfileImage = (data) => {
+          try {
+            if (data) {
+              localStorage.setItem('profileImage', data);
+              setProfileImageState(data);
+            } else {
+              localStorage.removeItem('profileImage');
+              setProfileImageState(null);
+            }
+          } catch (err) { setProfileImageState(data); }
+        };
+
+        const handleBellClick = () => {
+          // open full-screen notifications; clear count when opening
+          setNotificationOpen(true);
+          setNotificationCount(0);
+        };
+
+        const [transferMode, setTransferMode] = useState(null);
+        const [transferPrefill, setTransferPrefill] = useState(null);
+
+        const handleNavigate = (page, mode = null, prefill = null) => {
+          setTransferMode(mode);
+          setTransferPrefill(prefill);
+          setCurrentPage(page);
+          if (page === Page.HOME) setActiveTab('home');
+          else if (page === Page.TRANSFERS || page === Page.INSTANT_TRANSFER) setActiveTab('menu');
+          else if (page === Page.SCAN) setActiveTab('scan');
+          else if (page === Page.SUPPORT) setActiveTab('support');
+          else if (page === Page.PROFILE) setActiveTab('profile');
+        };
+
+        const getPageTitle = () => {
+          switch (currentPage) {
+            case Page.HOME: return 'Home';
+            case Page.TRANSFERS: return 'Transfers';
+            case Page.INSTANT_TRANSFER: return 'Instant Transfer';
+            case Page.SCAN: return 'Scan';
+            case Page.SUPPORT: return 'Support';
+            case Page.PROFILE: return 'Profile';
+            default: return 'Access Bank';
+          }
+        };
+        
+
+        const content = () => {
+          switch (currentPage) {
+            case Page.HOME: return React.createElement(HomePage, { onNavigate: handleNavigate, beneficiaries, ownerName: currentUser ? currentUser.name : undefined });
+            case Page.TRANSFERS: return React.createElement(TransfersPage, { onNavigate: handleNavigate, beneficiaries, transactions: transactions });
+            case Page.INSTANT_TRANSFER: return React.createElement(InstantTransferPage, { mode: transferMode, prefill: transferPrefill, onBack: () => handleNavigate(Page.TRANSFERS), onCreateTransaction: (tx) => addTransaction(tx), onNotifyPending: (tx) => notifyPending(currentUser ? currentUser.name : 'Customer', tx), onSaveBeneficiary: (b) => addBeneficiary(b) });
+            case Page.SCAN: return React.createElement(ScanPage, { onBack: () => handleNavigate(Page.HOME) });
+            case Page.SUPPORT: return React.createElement(SupportPage, { onBack: () => handleNavigate(Page.HOME) });
+            case Page.PROFILE: return React.createElement(ProfilePage, { onBack: () => handleNavigate(Page.HOME), profileImage: profileImage, setProfileImage, signOut: signOut, currentUser: currentUser, exportUsers: exportUsers, importUsers: importUsers });
+            default: return React.createElement(HomePage, { onNavigate: handleNavigate, beneficiaries, ownerName: currentUser ? currentUser.name : undefined });
+          }
+        };
+
+        if (!currentUser) {
+          return React.createElement('div', { className: 'max-w-md mx-auto h-screen flex flex-col bg-white overflow-hidden shadow-2xl relative' },
+            React.createElement(AuthScreen, { onCreateUser: createUser, onSignIn: signIn, firebaseReady })
+          );
+        }
+
+        return React.createElement('div', { className: 'max-w-md mx-auto h-screen flex flex-col bg-white overflow-hidden shadow-2xl relative' },
+          React.createElement(Header, {
+            currentPage,
+            title: getPageTitle(),
+            userName: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : undefined,
+            onBack: currentPage !== Page.HOME ? () => handleNavigate(Page.HOME) : undefined,
+            onBellClick: handleBellClick,
+            notificationOpen,
+            notificationCount
+          }),
+          // transient toast for pending transfers
+          toast && React.createElement('div', { className: 'fixed left-1/2 transform -translate-x-1/2 z-[70] w-[90%] max-w-lg', style: { top: '6%', pointerEvents: 'none' } },
+            React.createElement('div', { className: 'mx-auto bg-white/95 border-l-4 border-orange-500 rounded shadow-lg p-4', style: { pointerEvents: 'auto' } },
+              React.createElement('strong', { className: 'block text-sm text-orange-700 mb-1' }, toast.title),
+              React.createElement('pre', { className: 'whitespace-pre-wrap text-sm text-gray-800' }, toast.body)
+            )
+          ),
+          React.createElement('main', { className: 'flex-1 overflow-y-auto no-scrollbar pb-24' }, content()),
+          // Full-screen notifications overlay
+          notificationOpen && React.createElement('div', { className: 'fixed inset-0 z-[60] bg-white overflow-auto transition-opacity duration-300' },
+            React.createElement('div', { className: 'p-4 border-b flex items-center justify-between sticky top-0 bg-white' },
+              React.createElement('h2', { className: 'text-lg font-bold' }, 'Notifications'),
+              React.createElement('div', null, React.createElement('button', { onClick: () => setNotificationOpen(false), className: 'px-3 py-1 rounded bg-gray-100' }, 'Close'))
+            ),
+            React.createElement('div', { className: 'p-4 space-y-3' },
+              notifications.map((n) => (
+                React.createElement('div', { key: n.id, className: 'p-4 rounded-lg shadow-sm border' },
+                  React.createElement('div', { className: 'flex items-center justify-between mb-2' }, React.createElement('strong', null, n.title), React.createElement('span', { className: 'text-xs text-gray-500' }, '')),
+                  React.createElement('pre', { className: 'whitespace-pre-wrap text-sm text-gray-800' }, n.body)
+                )
+              ))
+            )
+          ),
+          React.createElement(BottomNav, {
+            activeTab,
+            hidden: notificationOpen,
+            onTabChange: (id) => {
+              setActiveTab(id);
+              if (id === 'home') handleNavigate(Page.HOME);
+              else if (id === 'menu') handleNavigate(Page.TRANSFERS);
+              else if (id === 'scan') handleNavigate(Page.SCAN);
+              else if (id === 'support') handleNavigate(Page.SUPPORT);
+              else if (id === 'profile') handleNavigate(Page.PROFILE);
+            }
+          }),
+          null
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    </script>
+  <body>
+    /* Lines 66-68 omitted */
+    <!-- Firebase config stub: leave empty by default. Paste your real config here to enable cross-device auth -->
+    <script>
+      // By default keep an empty config so the app uses localStorage.
+      // When no config is provided, users are stored only locally in browser "localStorage".
+      // That means accounts created on one device (e.g. laptop) won't be available on another (e.g. phone).
+      // To enable cross‑device sign‑in you must configure Firebase Auth or another backend.
+      // Create a free Firebase project and copy the config object (Project settings → Your apps → Firebase
+      // SDK snippet) into this file. Example:
+      //
+      // window.FIREBASE_CONFIG = {
+      //   apiKey: "YOUR_API_KEY",
+      //   authDomain: "your-app.firebaseapp.com",
+      //   projectId: "your-app",
+      //   storageBucket: "your-app.appspot.com",
+      //   messagingSenderId: "...",
+      //   appId: "..."
+      // };
+      //
+      // Once the config is populated the app will use Firebase to register/sign in users and
+      // those accounts will be shared across devices.
+      window.FIREBASE_CONFIG = {
+        apiKey: "AIzaSyDKFMhHnFkoTAM3Sf7gGs4c3bzufBj-rfE",
+        authDomain: "access-77f42.firebaseapp.com",
+        databaseURL: "https://access-77f42-default-rtdb.firebaseio.com",
+        projectId: "access-77f42",
+        storageBucket: "access-77f42.firebasestorage.app",
+        messagingSenderId: "511196730840",
+        appId: "1:511196730840:web:79a2c76dcdf0b30ae68ead",
+        measurementId: "G-S02WDE64FK"
+      };
+
+      console.log('Firebase configured ✓ — cross-device authentication enabled');
+    </script>
+    <script type="module">
